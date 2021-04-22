@@ -1,24 +1,10 @@
-use crate::arguments::PathError;
 use anyhow::{Context, Result};
 use clap::Clap;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::path::Path;
 
 mod arguments;
 mod mtp;
-
-fn create_output_dir(path: &Path) -> Result<(), PathError> {
-    match std::fs::metadata(&path) {
-        Ok(metadata) => {
-            if metadata.is_dir() {
-                Ok(())
-            } else {
-                Err(PathError::Inaccessible(path.to_string_lossy().to_string()))
-            }
-        }
-        Err(_e) => Ok(std::fs::create_dir_all(&path)?),
-    }
-}
+mod output;
 
 fn main() -> Result<()> {
     let options = arguments::Options::parse();
@@ -52,13 +38,17 @@ fn main() -> Result<()> {
             .serial_number()
             .unwrap_or_else(|_| "Unknown".to_string())
     ));
-    create_output_dir(&dst_folder)?;
+    output::create_output_dir(&dst_folder)?;
+    let existing = output::read_existing_activities(&dst_folder, &options.extension);
 
     for file in files {
         total_progress.set_message(&&file.name().to_string());
-        let dst = dst_folder.join(&file.name());
 
-        storage.get_file_to_path(file, dst)?;
+        if !existing.contains(&file.name().to_string()) {
+            let dst = dst_folder.join(&file.name());
+
+            storage.get_file_to_path(file, dst)?;
+        }
 
         total_progress.inc(1);
     }
