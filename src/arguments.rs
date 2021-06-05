@@ -1,6 +1,6 @@
-use clap::{AppSettings, Clap, ValueHint};
 use std::path::PathBuf;
-use thiserror::Error;
+
+use clap::{AppSettings, Clap, ValueHint};
 
 static ACTIVITY_DIR: &str = "GARMIN/Activity";
 
@@ -79,12 +79,4 @@ pub struct ApplicationArguments {
     pub verbose: u8,
     #[clap(subcommand)]
     pub command: Command,
-}
-
-#[derive(Error, Debug)]
-pub enum PathError {
-    #[error("Path `{0}` could not be resolved")]
-    Canonicalize(#[from] std::io::Error),
-    #[error("File or directory `{0}` is not accessible")]
-    Inaccessible(String),
 }

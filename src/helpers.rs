@@ -3,7 +3,7 @@ use std::path::Path;
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::arguments::PathError;
+use crate::error::PathError;
 
 const ACTIVITY_FILE_TYPES: [&str; 3] = ["fit", "gpx", "tcx"];
 

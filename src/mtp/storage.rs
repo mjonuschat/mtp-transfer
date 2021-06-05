@@ -1,16 +1,12 @@
+use std::path::Path;
+
 use libmtp_rs::storage::StoragePool;
 use libmtp_rs::{
     object::{filetypes::Filetype, Object},
     storage::{files::File, Parent, Storage},
 };
-use std::path::Path;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum StorageError {
-    #[error("Folder {0} could not be found")]
-    FolderNotFound(String),
-}
+use crate::error::StorageError;
 
 pub struct ActivityFolder<'a> {
     /// ID of the storage device
