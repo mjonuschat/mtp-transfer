@@ -1,4 +1,4 @@
-use super::get_raw_devices;
+use crate::mtp::get_raw_devices;
 
 use anyhow::Result;
 use libmtp_rs::device::{MtpDevice, StorageSort};
