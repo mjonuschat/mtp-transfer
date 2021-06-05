@@ -30,9 +30,27 @@ impl Sync {
 }
 
 #[derive(Clap, Debug)]
+pub struct MtpFileTree {
+    /// Select device by model name
+    #[clap(short, long, conflicts_with_all=&["manufacturer", "serial"])]
+    pub model: Option<String>,
+    /// Select device by manufacturer name
+    #[clap(short='a', long, conflicts_with_all=&["model", "serial"])]
+    pub manufacturer: Option<String>,
+    /// Select device by serial number
+    #[clap(short, long, conflicts_with_all=&["model", "manufacturer"])]
+    pub serial: Option<String>,
+    /// Show all files and folders
+    #[clap(long)]
+    pub all: bool,
+}
+
+#[derive(Clap, Debug)]
 pub enum MtpCommand {
     #[clap(about = "Detect MTP devices")]
     Detect,
+    #[clap(about = "Show tree of folders and activity files", name = "filetree")]
+    FileTree(MtpFileTree),
 }
 
 #[derive(Clap, Debug)]
