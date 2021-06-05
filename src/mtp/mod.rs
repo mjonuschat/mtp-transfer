@@ -1,84 +1,207 @@
-use libmtp_rs::device::raw::{detect_raw_devices, RawDevice};
-use libmtp_rs::device::MtpDevice;
-use libmtp_rs::error::{Error as FfiMtpError, MtpErrorKind};
-use thiserror::Error;
+use std::ops::Deref;
+use std::path::Path;
 
-pub use files::get_activity_files;
-pub use storage::find_activity_folder;
+use libmtp_rs::{
+    device::{
+        raw::{detect_raw_devices, RawDevice},
+        MtpDevice,
+    },
+    error::{Error as MtpError, MtpErrorKind},
+    object::{filetypes::Filetype, Object},
+    storage::{files::File, Parent, Storage},
+};
+
 pub use utils::{detect, filetree};
 
+use crate::error::{DeviceError, StorageError};
+use crate::helpers;
 use crate::types::DeviceSelector;
 
-mod files;
-mod storage;
 mod utils;
 
-#[derive(Error, Debug)]
-pub enum MtpError {
-    #[error("No MTP device found on USB bus")]
-    NoDeviceAttached,
-    #[error("No device matching selection criteria found")]
-    DeviceNotFound,
-    #[error("FFI error: {0}")]
-    FfiError(#[from] libmtp_rs::error::Error),
-}
-
-pub(in crate::mtp) fn get_raw_devices() -> Result<Vec<RawDevice>, MtpError> {
+pub(in crate::mtp) fn get_raw_devices() -> Result<Vec<RawDevice>, DeviceError> {
     detect_raw_devices().map_err(|e| match e {
-        FfiMtpError::Unknown => MtpError::FfiError(e),
-        FfiMtpError::Utf8Error { .. } => MtpError::FfiError(e),
-        FfiMtpError::MtpError { kind, .. } => match kind {
-            MtpErrorKind::NoDeviceAttached => MtpError::NoDeviceAttached,
-            _ => MtpError::FfiError(e),
+        MtpError::Unknown => DeviceError::LibMtpError(e),
+        MtpError::Utf8Error { .. } => DeviceError::LibMtpError(e),
+        MtpError::MtpError { kind, .. } => match kind {
+            MtpErrorKind::NoDeviceAttached => DeviceError::NoDeviceAttached,
+            _ => DeviceError::LibMtpError(e),
         },
     })
 }
 
-pub fn get_device(selector: &DeviceSelector) -> Result<MtpDevice, MtpError> {
-    let raw_devices = get_raw_devices()?;
+#[derive(Debug)]
+pub struct Device {
+    pub name: String,
+    pub serial: String,
+    inner: MtpDevice,
+}
 
-    if raw_devices.len() > 1 && matches!(selector, DeviceSelector::First) {
-        println!(
-            "Found {} MTP devices, defaulting to first one found.",
-            raw_devices.len()
-        );
-        println!("Please select a specific device using manufacturer/model/serial number");
-    }
-
-    for raw_device in raw_devices {
-        if let Some(device) = raw_device.open_uncached() {
-            match selector {
-                DeviceSelector::First => return Ok(device),
-                DeviceSelector::ManufacturerName(ref pattern) => {
-                    if let Ok(name) = device.manufacturer_name() {
-                        if name.contains(pattern) {
-                            return Ok(device);
-                        }
-                    }
-                }
-                DeviceSelector::ModelName(ref pattern) => {
-                    if let Ok(name) = device.model_name() {
-                        if name.contains(pattern) {
-                            return Ok(device);
-                        }
-                    }
-                }
-                DeviceSelector::SerialNumber(ref pattern) => {
-                    if let Ok(serial) = device.serial_number() {
-                        if serial == *pattern {
-                            return Ok(device);
-                        }
-                    }
-                }
-            }
-        } else {
-            let device = raw_device.device_entry();
-            println!(
-                "Could not open device (Vendor {:04x}, Product {:04x}), skipping...",
-                device.vendor_id, device.product_id
-            )
+impl Device {
+    pub fn new(device: MtpDevice) -> Self {
+        Self {
+            name: Self::friendly_name(&device),
+            serial: Self::serial_number(&device),
+            inner: device,
         }
     }
 
-    Err(MtpError::DeviceNotFound)
+    pub fn get(selector: &DeviceSelector) -> Result<Device, DeviceError> {
+        let raw_devices = get_raw_devices()?;
+
+        if raw_devices.len() > 1 && matches!(selector, DeviceSelector::First) {
+            println!(
+                "Found {} MTP devices, defaulting to first one found.",
+                raw_devices.len()
+            );
+            println!("Please select a specific device using manufacturer/model/serial number");
+        }
+
+        for raw_device in raw_devices {
+            if let Some(device) = raw_device.open_uncached() {
+                match selector {
+                    DeviceSelector::First => return Ok(Self::new(device)),
+                    DeviceSelector::ManufacturerName(ref pattern) => {
+                        if let Ok(name) = device.manufacturer_name() {
+                            if name.contains(pattern) {
+                                return Ok(Self::new(device));
+                            }
+                        }
+                    }
+                    DeviceSelector::ModelName(ref pattern) => {
+                        if let Ok(name) = device.model_name() {
+                            if name.contains(pattern) {
+                                return Ok(Self::new(device));
+                            }
+                        }
+                    }
+                    DeviceSelector::SerialNumber(ref pattern) => {
+                        if let Ok(serial) = device.serial_number() {
+                            if serial == *pattern {
+                                return Ok(Self::new(device));
+                            }
+                        }
+                    }
+                }
+            } else {
+                let device = raw_device.device_entry();
+                println!(
+                    "Could not open device (Vendor {:04x}, Product {:04x}), skipping...",
+                    device.vendor_id, device.product_id
+                )
+            }
+        }
+
+        Err(DeviceError::DeviceNotFound)
+    }
+
+    fn friendly_name(device: &MtpDevice) -> String {
+        match device.get_friendly_name() {
+            Ok(fname) => fname,
+            Err(_) => format!(
+                "{} {}",
+                device
+                    .manufacturer_name()
+                    .unwrap_or_else(|_| "Unknown".to_string()),
+                device
+                    .model_name()
+                    .unwrap_or_else(|_| "Unknown".to_string())
+            ),
+        }
+    }
+
+    fn serial_number(device: &MtpDevice) -> String {
+        device
+            .serial_number()
+            .unwrap_or_else(|_| "Unknown".to_string())
+    }
+
+    fn find_folder_recursive<'a>(
+        &self,
+        path: &Path,
+        storage: &'a Storage,
+        folder: Option<File<'a>>,
+    ) -> Result<Option<File<'a>>, StorageError> {
+        let parent = folder
+            .as_ref()
+            .map_or(Parent::Root, |f| Parent::Folder(f.id()));
+        let mut components = path.components();
+
+        match components.next() {
+            Some(component) => {
+                let mut targets = storage
+                    .files_and_folders(parent)
+                    .into_iter()
+                    .filter(|entry| {
+                        matches!(entry.ftype(), Filetype::Folder)
+                            && entry.name() == component.as_os_str()
+                    });
+
+                match targets.next() {
+                    Some(target) => self.find_folder_recursive(
+                        &components.as_path().to_path_buf(),
+                        storage,
+                        Some(target),
+                    ),
+                    None => Err(StorageError::FolderNotFound(
+                        component.as_os_str().to_string_lossy().to_string(),
+                    )),
+                }
+            }
+            None => Ok(folder),
+        }
+    }
+
+    // TODO: Handle multiple storages with identical folders
+    fn activity_folder(&self, path: &Path) -> Result<Parent, StorageError> {
+        let storage_pool = self.storage_pool();
+
+        for (i, (_id, storage)) in storage_pool.iter().enumerate() {
+            // Find activity folder
+            if let Some(folder) = self.find_folder_recursive(path, storage, None)? {
+                println!(
+                    "Found {} folder on Storage {}:",
+                    path.to_string_lossy(),
+                    i + 1
+                );
+                println!(
+                    "  Description: {}",
+                    storage.description().unwrap_or("Unknown")
+                );
+                println!(
+                    "  Max. capacity: {}",
+                    bytefmt::format(storage.maximum_capacity())
+                );
+                println!(
+                    "  Free space: {}",
+                    bytefmt::format(storage.free_space_in_bytes())
+                );
+
+                return Ok(Parent::Folder(folder.id()));
+            }
+        }
+
+        Err(StorageError::FolderNotFound(
+            "Activity folder not found".to_string(),
+        ))
+    }
+
+    pub fn activity_files(&self, path: &Path) -> Result<Vec<File>, StorageError> {
+        let parent = self.activity_folder(path)?;
+        Ok(self
+            .storage_pool()
+            .files_and_folders(parent)
+            .into_iter()
+            .filter(|item| !matches!(item.ftype(), Filetype::Folder))
+            .filter(|item| helpers::is_activity_file(item.name()))
+            .collect())
+    }
+}
+
+impl Deref for Device {
+    type Target = MtpDevice;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }

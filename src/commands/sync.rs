@@ -1,46 +1,17 @@
 use crate::arguments::Sync;
-use crate::{helpers, mtp};
-
-use std::borrow::Borrow;
+use crate::{helpers, mtp::Device};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use libmtp_rs::device::MtpDevice;
-
-fn friendly_name(device: &MtpDevice) -> String {
-    match device.get_friendly_name() {
-        Ok(fname) => fname,
-        Err(_) => format!(
-            "{} {}",
-            device
-                .manufacturer_name()
-                .unwrap_or_else(|_| "Unknown".to_string()),
-            device
-                .model_name()
-                .unwrap_or_else(|_| "Unknown".to_string())
-        ),
-    }
-}
-
-fn serial_number(device: &MtpDevice) -> String {
-    device
-        .serial_number()
-        .unwrap_or_else(|_| "Unknown".to_string())
-}
 
 pub fn run(options: &Sync) -> Result<()> {
-    let device: MtpDevice = mtp::get_device(&options.into())?;
-    let storage_pool = device.storage_pool();
-    let dst_folder = options.output.join(format!(
-        "{} - {}",
-        friendly_name(&device),
-        serial_number(&device)
-    ));
+    let device = Device::get(&options.into())?;
+    let dst_folder = options
+        .output
+        .join(format!("{} - {}", &device.name, &device.serial));
 
-    let activity_folder =
-        mtp::find_activity_folder(storage_pool.borrow(), &options.activity_dir())?;
-
-    let files = mtp::get_activity_files(activity_folder.storage, activity_folder.folder);
+    let storage = device.storage_pool();
+    let files = device.activity_files(&options.activity_dir())?;
 
     let total_progress = ProgressBar::new(files.len() as u64);
     total_progress.set_style(
@@ -57,7 +28,7 @@ pub fn run(options: &Sync) -> Result<()> {
         if !existing.contains(&file.name().to_string()) {
             let dst = dst_folder.join(&file.name());
 
-            activity_folder.storage.get_file_to_path(file, dst)?;
+            storage.get_file_to_path(file, dst)?;
         }
 
         total_progress.inc(1);

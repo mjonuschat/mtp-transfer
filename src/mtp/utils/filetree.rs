@@ -6,11 +6,11 @@ use libmtp_rs::storage::{Parent, Storage};
 use ptree::item::StringItem;
 
 use crate::helpers;
-use crate::mtp::get_device;
+use crate::mtp::Device;
 use crate::types::DeviceSelector;
 
 pub fn filetree(selector: DeviceSelector, verbose: bool) -> Result<()> {
-    let device = get_device(&selector)?;
+    let device = Device::get(&selector)?;
 
     for (id, storage) in device.storage_pool().iter() {
         let name = storage
