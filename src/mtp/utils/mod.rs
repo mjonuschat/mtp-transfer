@@ -1,16 +1,17 @@
-use crate::mtp::{DeviceSelector, MtpError};
-
 use libmtp_rs::device::{
     raw::{detect_raw_devices, RawDevice},
     MtpDevice,
 };
 use libmtp_rs::error::{Error as FfiMtpError, MtpErrorKind};
 
-mod detect;
-mod filetree;
-
 pub use detect::detect;
 pub use filetree::filetree;
+
+use crate::mtp::MtpError;
+use crate::types::DeviceSelector;
+
+mod detect;
+mod filetree;
 
 pub(super) fn get_raw_devices() -> Result<Vec<RawDevice>, MtpError> {
     detect_raw_devices().map_err(|e| match e {

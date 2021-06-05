@@ -1,5 +1,5 @@
 use crate::mtp;
-use crate::mtp::DeviceSelector;
+use crate::types::DeviceSelector;
 use anyhow::Result;
 
 pub fn detect(verbose: u8) -> Result<()> {
