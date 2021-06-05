@@ -1,11 +1,12 @@
-use crate::helpers::create_spinner;
-use crate::mtp::{get_device, DeviceSelector};
 use anyhow::Result;
 use indicatif::ProgressBar;
 use libmtp_rs::device::MtpDevice;
 use libmtp_rs::object::{filetypes::Filetype, Object};
 use libmtp_rs::storage::{Parent, Storage};
 use ptree::item::StringItem;
+
+use crate::helpers;
+use crate::mtp::{get_device, DeviceSelector};
 
 pub fn filetree(selector: DeviceSelector, verbose: bool) -> Result<()> {
     let device = get_device(&selector)?;
@@ -15,7 +16,7 @@ pub fn filetree(selector: DeviceSelector, verbose: bool) -> Result<()> {
             .description()
             .map_or_else(|| id.to_string(), |v| v.to_owned());
 
-        let spinner = create_spinner(&format!("Scanning {}", &name));
+        let spinner = helpers::create_spinner(&format!("Scanning {}", &name));
 
         let result = recursive_file_tree(
             &device,
@@ -63,14 +64,11 @@ fn recursive_file_tree<'a>(
             if let Some(item) = result {
                 children.push(item)
             }
-        } else {
-            // TODO: Filter by multiple interesting files
-            if file.name().ends_with(".fit") {
-                children.push(StringItem {
-                    text: file.name().to_string(),
-                    children: Vec::new(),
-                })
-            }
+        } else if verbose || helpers::is_activity_file(file.name()) {
+            children.push(StringItem {
+                text: file.name().to_string(),
+                children: Vec::new(),
+            })
         }
     }
 

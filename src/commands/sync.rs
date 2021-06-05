@@ -19,7 +19,7 @@ pub fn run(options: &Sync) -> Result<()> {
         .by_id(device.storage)
         .context("Couldn't open storage")?;
 
-    let files = crate::mtp::get_files(storage, device.activity_folder, &options.extension);
+    let files = crate::mtp::get_files(storage, device.activity_folder);
 
     let total_progress = ProgressBar::new(files.len() as u64);
     total_progress.set_style(
@@ -36,7 +36,7 @@ pub fn run(options: &Sync) -> Result<()> {
             .unwrap_or_else(|_| "Unknown".to_string())
     ));
     output::create_output_dir(&dst_folder)?;
-    let existing = output::read_existing_activities(&dst_folder, &options.extension);
+    let existing = output::read_existing_activities(&dst_folder);
 
     for file in files {
         total_progress.set_message(&&file.name().to_string());

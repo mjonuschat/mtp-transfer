@@ -18,9 +18,6 @@ pub struct Sync {
     /// Force export and overwrite all existing files
     #[clap(short, long)]
     pub force: bool,
-    /// Download activity files with this extension
-    #[clap(short, long, default_value = ".fit")]
-    pub extension: String,
 }
 
 impl Sync {
