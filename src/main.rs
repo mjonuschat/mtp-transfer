@@ -5,7 +5,6 @@ mod arguments;
 mod commands;
 mod helpers;
 mod mtp;
-mod output;
 
 fn main() -> Result<()> {
     let options = arguments::ApplicationArguments::parse();

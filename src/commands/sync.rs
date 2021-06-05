@@ -1,11 +1,11 @@
 use crate::arguments::Sync;
-use crate::mtp;
-use crate::output;
+use crate::{helpers, mtp};
+
+use std::borrow::Borrow;
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use libmtp_rs::device::MtpDevice;
-use std::borrow::Borrow;
 
 fn friendly_name(device: &MtpDevice) -> String {
     match device.get_friendly_name() {
@@ -48,8 +48,8 @@ pub fn run(options: &Sync) -> Result<()> {
             .template("[{elapsed_precise}] {bar:40} {pos:>7}/{len:7} {msg}"),
     );
 
-    output::create_output_dir(&dst_folder)?;
-    let existing = output::read_existing_activities(&dst_folder);
+    helpers::create_output_dir(&dst_folder)?;
+    let existing = helpers::read_existing_activities(&dst_folder);
 
     for file in files {
         total_progress.set_message(&&file.name().to_string());
