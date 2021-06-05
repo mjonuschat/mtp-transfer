@@ -3,6 +3,7 @@ use clap::Clap;
 
 mod arguments;
 mod commands;
+mod helpers;
 mod mtp;
 mod output;
 
