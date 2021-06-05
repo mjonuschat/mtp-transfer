@@ -11,7 +11,7 @@ pub fn select_device(_pattern: &str) -> Result<Device, MtpError> {
                 FfiMtpError::Unknown => Err(MtpError::FfiError(e)),
                 FfiMtpError::Utf8Error { .. } => Err(MtpError::FfiError(e)),
                 FfiMtpError::MtpError { kind, .. } => match kind {
-                    MtpErrorKind::NoDeviceAttached => Err(MtpError::NoDeviceFound),
+                    MtpErrorKind::NoDeviceAttached => Err(MtpError::NoDeviceAttached),
                     _ => Err(MtpError::FfiError(e)),
                 },
             }
@@ -50,5 +50,5 @@ pub fn select_device(_pattern: &str) -> Result<Device, MtpError> {
         };
     }
 
-    Err(MtpError::NoDeviceFound)
+    Err(MtpError::NoDeviceAttached)
 }

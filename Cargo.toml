@@ -11,6 +11,6 @@ anyhow = "1.0.40"
 bytefmt = "0.1.7"
 clap = "3.0.0-beta.2"
 indicatif = "0.15.0"
-libmtp-rs = "0.7.7"
+libmtp-rs = { version = "0.7.7", path="../libmtp-rs" }
 thiserror = "1.0.24"
 walkdir = "2.3.2"

@@ -191,8 +191,6 @@ checksum = "9385f66bf6105b241aa65a61cb923ef20efc665cb9f9bb50ac2f0c4b7f378d41"
 [[package]]
 name = "libmtp-rs"
 version = "0.7.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d2ed1d38f1cac11a4fae9becb7b0fcea78c0e5ef7ebe5ac777d2c54fce79a7d"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -208,8 +206,6 @@ dependencies = [
 [[package]]
 name = "libmtp-sys"
 version = "1.1.17-5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30dead7582c263b66ec156e9d82a5e33cb403adf59b99f7ec2224e92f13fa2b4"
 dependencies = [
  "libc",
  "pkg-config",
