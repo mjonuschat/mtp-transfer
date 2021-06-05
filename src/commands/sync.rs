@@ -1,25 +1,46 @@
 use crate::arguments::Sync;
+use crate::mtp;
 use crate::output;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
+use libmtp_rs::device::MtpDevice;
+use std::borrow::Borrow;
+
+fn friendly_name(device: &MtpDevice) -> String {
+    match device.get_friendly_name() {
+        Ok(fname) => fname,
+        Err(_) => format!(
+            "{} {}",
+            device
+                .manufacturer_name()
+                .unwrap_or_else(|_| "Unknown".to_string()),
+            device
+                .model_name()
+                .unwrap_or_else(|_| "Unknown".to_string())
+        ),
+    }
+}
+
+fn serial_number(device: &MtpDevice) -> String {
+    device
+        .serial_number()
+        .unwrap_or_else(|_| "Unknown".to_string())
+}
 
 pub fn run(options: &Sync) -> Result<()> {
-    let pattern = options
-        .device
-        .as_ref()
-        .map_or_else(|| "".to_string(), |v| v.to_owned());
+    let device: MtpDevice = mtp::get_device(&options.into())?;
+    let storage_pool = device.storage_pool();
+    let dst_folder = options.output.join(format!(
+        "{} - {}",
+        friendly_name(&device),
+        serial_number(&device)
+    ));
 
-    let device = crate::mtp::select_storage(
-        crate::mtp::select_device(&pattern)?,
-        &options.activity_dir(),
-    )?;
-    let storage_pool = device.handle.storage_pool();
-    let storage = storage_pool
-        .by_id(device.storage)
-        .context("Couldn't open storage")?;
+    let activity_folder =
+        mtp::find_activity_folder(storage_pool.borrow(), &options.activity_dir())?;
 
-    let files = crate::mtp::get_files(storage, device.activity_folder);
+    let files = mtp::get_files(activity_folder.storage, activity_folder.folder);
 
     let total_progress = ProgressBar::new(files.len() as u64);
     total_progress.set_style(
@@ -27,14 +48,6 @@ pub fn run(options: &Sync) -> Result<()> {
             .template("[{elapsed_precise}] {bar:40} {pos:>7}/{len:7} {msg}"),
     );
 
-    let dst_folder = options.output.join(format!(
-        "{} - {}",
-        &device.name,
-        &device
-            .handle
-            .serial_number()
-            .unwrap_or_else(|_| "Unknown".to_string())
-    ));
     output::create_output_dir(&dst_folder)?;
     let existing = output::read_existing_activities(&dst_folder);
 
@@ -44,7 +57,7 @@ pub fn run(options: &Sync) -> Result<()> {
         if !existing.contains(&file.name().to_string()) {
             let dst = dst_folder.join(&file.name());
 
-            storage.get_file_to_path(file, dst)?;
+            activity_folder.storage.get_file_to_path(file, dst)?;
         }
 
         total_progress.inc(1);

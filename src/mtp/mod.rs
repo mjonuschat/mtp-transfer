@@ -1,16 +1,14 @@
 // Add types here
 
-mod devices;
 mod files;
 mod storage;
 mod utils;
 
-pub use devices::select_device;
 pub use files::get_files;
-pub use storage::select_storage;
+pub use storage::find_activity_folder;
 pub use utils::{detect, filetree, get_device};
 
-use crate::arguments::MtpFileTree;
+use crate::arguments::{MtpFileTree, Sync};
 use libmtp_rs::{device::MtpDevice, storage::Parent};
 use thiserror::Error;
 
@@ -18,12 +16,8 @@ use thiserror::Error;
 pub enum MtpError {
     #[error("No MTP device found on USB bus")]
     NoDeviceAttached,
-    #[error("Multiple MTP device found")]
-    MultipleDevicesFound,
     #[error("No device matching selection criteria found")]
     DeviceNotFound,
-    #[error("Could not open device: {0}")]
-    IoError(String),
     #[error("FFI error: {0}")]
     FfiError(#[from] libmtp_rs::error::Error),
 }
@@ -52,6 +46,20 @@ impl From<MtpFileTree> for DeviceSelector {
             DeviceSelector::ModelName(model)
         } else if let Some(manufacturer) = params.manufacturer {
             DeviceSelector::ManufacturerName(manufacturer)
+        } else {
+            DeviceSelector::First
+        }
+    }
+}
+
+impl From<&Sync> for DeviceSelector {
+    fn from(params: &Sync) -> Self {
+        if let Some(serial) = &params.serial {
+            DeviceSelector::SerialNumber(serial.to_owned())
+        } else if let Some(model) = &params.model {
+            DeviceSelector::ModelName(model.to_owned())
+        } else if let Some(manufacturer) = &params.manufacturer {
+            DeviceSelector::ManufacturerName(manufacturer.to_owned())
         } else {
             DeviceSelector::First
         }

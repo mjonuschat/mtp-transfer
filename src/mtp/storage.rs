@@ -1,6 +1,5 @@
-use crate::mtp::Device;
+use libmtp_rs::storage::StoragePool;
 use libmtp_rs::{
-    device::StorageSort,
     object::{filetypes::Filetype, Object},
     storage::{files::File, Parent, Storage},
 };
@@ -13,7 +12,14 @@ pub enum StorageError {
     FolderNotFound(String),
 }
 
-fn find_folder<'a>(
+pub struct ActivityFolder<'a> {
+    /// ID of the storage device
+    pub storage: &'a Storage<'a>,
+    /// Parent object of activity folder
+    pub folder: Parent,
+}
+
+fn find_folder_recursive<'a>(
     path: &Path,
     storage: &'a Storage,
     folder: Option<File<'a>>,
@@ -34,9 +40,11 @@ fn find_folder<'a>(
                 });
 
             match targets.next() {
-                Some(target) => {
-                    find_folder(&components.as_path().to_path_buf(), storage, Some(target))
-                }
+                Some(target) => find_folder_recursive(
+                    &components.as_path().to_path_buf(),
+                    storage,
+                    Some(target),
+                ),
                 None => Err(StorageError::FolderNotFound(
                     component.as_os_str().to_string_lossy().to_string(),
                 )),
@@ -46,17 +54,16 @@ fn find_folder<'a>(
     }
 }
 
-pub fn select_storage(mut device: Device, path: &Path) -> Result<Device, StorageError> {
-    device
-        .handle
-        .update_storage(StorageSort::ByMaximumSpace)
-        .unwrap();
+// TODO: Handle multiple storages with identical folders
+pub fn find_activity_folder<'a>(
+    storage_pool: &'a StoragePool<'a>,
+    path: &Path,
+) -> Result<ActivityFolder<'a>, StorageError> {
+    let mut activity_folder: Option<ActivityFolder> = None;
 
-    let storage_pool = device.handle.storage_pool();
-    let mut found = false;
-    for (i, (id, storage)) in storage_pool.iter().enumerate() {
-        // Find garmin folder
-        if let Some(folder) = find_folder(path, storage, None)? {
+    for (i, (_id, storage)) in storage_pool.iter().enumerate() {
+        // Find activity folder
+        if let Some(folder) = find_folder_recursive(path, storage, None)? {
             println!(
                 "Found {} folder on Storage {}:",
                 path.to_string_lossy(),
@@ -75,18 +82,14 @@ pub fn select_storage(mut device: Device, path: &Path) -> Result<Device, Storage
                 bytefmt::format(storage.free_space_in_bytes())
             );
 
-            device.storage = id;
-            device.activity_folder = Parent::Folder(folder.id());
-            found = true;
+            activity_folder.replace(ActivityFolder {
+                storage,
+                folder: Parent::Folder(folder.id()),
+            });
             break;
         }
     }
 
-    if !found {
-        return Err(StorageError::FolderNotFound(
-            "Activity folder not found".to_string(),
-        ));
-    }
-
-    Ok(device)
+    activity_folder
+        .ok_or_else(|| StorageError::FolderNotFound("Activity folder not found".to_string()))
 }

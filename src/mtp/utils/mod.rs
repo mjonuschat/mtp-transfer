@@ -24,7 +24,17 @@ pub(super) fn get_raw_devices() -> Result<Vec<RawDevice>, MtpError> {
 }
 
 pub fn get_device(selector: &DeviceSelector) -> Result<MtpDevice, MtpError> {
-    for raw_device in get_raw_devices()? {
+    let raw_devices = get_raw_devices()?;
+
+    if raw_devices.len() > 1 && matches!(selector, DeviceSelector::First) {
+        println!(
+            "Found {} MTP devices, defaulting to first one found.",
+            raw_devices.len()
+        );
+        println!("Please select a specific device using manufacturer/model/serial number");
+    }
+
+    for raw_device in raw_devices {
         if let Some(device) = raw_device.open_uncached() {
             match selector {
                 DeviceSelector::First => return Ok(device),
@@ -50,6 +60,12 @@ pub fn get_device(selector: &DeviceSelector) -> Result<MtpDevice, MtpError> {
                     }
                 }
             }
+        } else {
+            let device = raw_device.device_entry();
+            println!(
+                "Could not open device (Vendor {:04x}, Product {:04x}), skipping...",
+                device.vendor_id, device.product_id
+            )
         }
     }
 

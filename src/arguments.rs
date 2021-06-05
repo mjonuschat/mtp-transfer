@@ -6,9 +6,15 @@ static ACTIVITY_DIR: &str = "GARMIN/Activity";
 
 #[derive(Clap, Debug)]
 pub struct Sync {
-    /// Select device by name - if multiple MTP devices are attached
-    #[clap(short, long)]
-    pub device: Option<String>,
+    /// Select device by model name
+    #[clap(short, long, conflicts_with_all=&["manufacturer", "serial"])]
+    pub model: Option<String>,
+    /// Select device by manufacturer name
+    #[clap(short='a', long, conflicts_with_all=&["model", "serial"])]
+    pub manufacturer: Option<String>,
+    /// Select device by serial number
+    #[clap(short, long, conflicts_with_all=&["model", "manufacturer"])]
+    pub serial: Option<String>,
     /// Path to the activity files on the MTP device
     #[clap(short, long, parse(from_os_str), value_hint = ValueHint::DirPath, default_value = ACTIVITY_DIR)]
     pub input: PathBuf,
