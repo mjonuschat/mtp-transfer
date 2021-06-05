@@ -284,6 +284,7 @@ checksum = "9385f66bf6105b241aa65a61cb923ef20efc665cb9f9bb50ac2f0c4b7f378d41"
 [[package]]
 name = "libmtp-rs"
 version = "0.7.7"
+source = "git+https://github.com/quebin31/libmtp-rs.git#f9c4f3de1ecc22dc5e8bc769c40ac1b6058d9f69"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -299,6 +300,7 @@ dependencies = [
 [[package]]
 name = "libmtp-sys"
 version = "1.1.17-5"
+source = "git+https://github.com/quebin31/libmtp-rs.git#f9c4f3de1ecc22dc5e8bc769c40ac1b6058d9f69"
 dependencies = [
  "libc",
  "pkg-config",
