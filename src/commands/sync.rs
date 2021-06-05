@@ -40,7 +40,7 @@ pub fn run(options: &Sync) -> Result<()> {
     let activity_folder =
         mtp::find_activity_folder(storage_pool.borrow(), &options.activity_dir())?;
 
-    let files = mtp::get_files(activity_folder.storage, activity_folder.folder);
+    let files = mtp::get_activity_files(activity_folder.storage, activity_folder.folder);
 
     let total_progress = ProgressBar::new(files.len() as u64);
     total_progress.set_style(

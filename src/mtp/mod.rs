@@ -4,7 +4,7 @@ mod files;
 mod storage;
 mod utils;
 
-pub use files::get_files;
+pub use files::get_activity_files;
 pub use storage::find_activity_folder;
 pub use utils::{detect, filetree, get_device};
 
