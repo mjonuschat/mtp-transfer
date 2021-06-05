@@ -20,6 +20,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Install libmtp library
+        run: |
+          sudo apt-get -y install libmtp-dev
+
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -41,6 +45,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Install libmtp library
+        run: |
+          sudo apt-get -y install libmtp-dev
+
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -61,6 +69,10 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+
+      - name: Install libmtp library
+        run: |
+          sudo apt-get -y install libmtp-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
