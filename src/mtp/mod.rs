@@ -37,6 +37,12 @@ pub struct Device {
     inner: MtpDevice,
 }
 
+#[derive(Debug)]
+pub struct ActivityFolder {
+    pub storage_id: u32,
+    pub parent: Parent,
+}
+
 impl Device {
     pub fn new(device: MtpDevice) -> Self {
         Self {
@@ -153,7 +159,7 @@ impl Device {
     }
 
     // TODO: Handle multiple storages with identical folders
-    fn activity_folder(&self, path: &Path) -> Result<Parent, StorageError> {
+    fn activity_folder(&self, path: &Path) -> Result<ActivityFolder, StorageError> {
         let storage_pool = self.storage_pool();
 
         for (i, (_id, storage)) in storage_pool.iter().enumerate() {
@@ -176,8 +182,10 @@ impl Device {
                     "  Free space: {}",
                     bytefmt::format(storage.free_space_in_bytes())
                 );
-
-                return Ok(Parent::Folder(folder.id()));
+                return Ok(ActivityFolder {
+                    storage_id: storage.id(),
+                    parent: Parent::Folder(folder.id()),
+                });
             }
         }
 
@@ -187,10 +195,14 @@ impl Device {
     }
 
     pub fn activity_files(&self, path: &Path) -> Result<Vec<File>, StorageError> {
-        let parent = self.activity_folder(path)?;
-        Ok(self
+        let folder = self.activity_folder(path)?;
+        let files: Vec<File> = self
             .storage_pool()
-            .files_and_folders(parent)
+            .by_id(folder.storage_id)
+            .map(|v| v.files_and_folders(folder.parent))
+            .unwrap_or_else(Vec::new);
+
+        Ok(files
             .into_iter()
             .filter(|item| !matches!(item.ftype(), Filetype::Folder))
             .filter(|item| helpers::is_activity_file(item.name()))
